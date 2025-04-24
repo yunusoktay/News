@@ -8,7 +8,15 @@
 import UIKit
 import SnapKit
 
+protocol SettingsOutputProtocol: AnyObject {
+    func applyThemeStyle(index: Int)
+    func openURL(_ url: URL)
+}
+
 class SettingsVC: UIViewController {
+
+    // MARK: - Properties
+    private let viewModel = SettingsVM()
 
     // MARK: - UI Components
     private let titleLabel: UILabel = {
@@ -206,6 +214,8 @@ class SettingsVC: UIViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        viewModel.outputDelegate = self
+        viewModel.inputDelegate = viewModel
         setupUI()
         setupGestures()
     }
@@ -408,39 +418,36 @@ class SettingsVC: UIViewController {
 
     // MARK: - Actions
     @objc private func themeChanged(_ sender: UISegmentedControl) {
-        let selectedTheme = sender.selectedSegmentIndex
-
-        if #available(iOS 13.0, *) {
-            let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
-            let window = scene?.windows.first
-
-            window?.overrideUserInterfaceStyle = selectedTheme == 0 ? .light : .dark
-        }
+        viewModel.inputDelegate?.changeTheme(to: sender.selectedSegmentIndex)
     }
 
     @objc private func notificationSwitchChanged(_ sender: UISwitch) {
-        if sender.isOn {
-            print("Notifications enabled")
-        } else {
-            print("Notifications disabled")
-        }
+        viewModel.inputDelegate?.toogleNotifications(isOn: sender.isOn)
     }
 
     @objc private func rateUsTapped() {
-        if let appStoreURL = URL(string: "itms-apps://itunes.apple.com/app/idYOUR_APP_ID?action=write-review") {
-            UIApplication.shared.open(appStoreURL, options: [:], completionHandler: nil)
-        }
+        viewModel.inputDelegate?.requestRateApp()
     }
 
     @objc private func privacyPolicyTapped() {
-        if let url = URL(string: "https://www.yunusoktay.com") {
-            UIApplication.shared.open(url)
-        }
+        viewModel.inputDelegate?.requestPrivacyPolicy()
     }
 
     @objc private func termsOfUseTapped() {
-        if let url = URL(string: "https://www.yunusoktay.com") {
-            UIApplication.shared.open(url)
+        viewModel.inputDelegate?.requestTermsOfUse()
+    }
+}
+
+extension SettingsVC: SettingsOutputProtocol {
+    func applyThemeStyle(index: Int) {
+        let style: UIUserInterfaceStyle = (index == 0) ? .light : .dark
+        guard let windowScene = view.window?.windowScene else { return }
+        windowScene.windows.forEach { window in
+            window.overrideUserInterfaceStyle = style
         }
+    }
+
+    func openURL(_ url: URL) {
+        UIApplication.shared.open(url, options: [:], completionHandler: nil)
     }
 }

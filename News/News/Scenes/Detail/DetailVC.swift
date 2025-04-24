@@ -8,10 +8,16 @@
 import UIKit
 import SnapKit
 
+protocol DetailOutputProtocol: AnyObject {
+    func updateUI(with article: Article)
+    func shareArticle(title: String, url: URL)
+}
+
 final class DetailVC: UIViewController {
 
     // MARK: - Properties
     private var article: Article
+    private let viewModel: DetailVM
 
     // MARK: - UI Components
     private let scrollView: UIScrollView = {
@@ -74,6 +80,7 @@ final class DetailVC: UIViewController {
     // MARK: - Init
     init(article: Article) {
         self.article = article
+        self.viewModel = DetailVM(article: article)
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -84,9 +91,11 @@ final class DetailVC: UIViewController {
     // MARK: Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        viewModel.outputDelegate = self
         setupUI()
         configureNavigationBar()
         configureWithArticle()
+        viewModel.inputDelegate?.viewDidLoad()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -198,9 +207,23 @@ final class DetailVC: UIViewController {
 
     // MARK: - Actions
     @objc private func shareButtonTapped() {
-        guard let url = URL(string: article.url ?? "") else { return }
+        viewModel.inputDelegate?.shareButtonTapped()
+    }
+}
 
-        let items: [Any] = [article.title ?? "Haber", url]
+extension DetailVC: DetailOutputProtocol {
+    func updateUI(with article: Article) {
+        titleLabel.text = article.title
+        descriptionTextView.text = article.content
+        sourceLabel.text = article.source?.name
+        if let publishedAt = article.publishedAt {
+            dateLabel.text = publishedAt.formatAsArticleDate()
+        }
+        newsImageView.setImage(url: article.urlToImage)
+    }
+
+    func shareArticle(title: String, url: URL) {
+        let items: [Any] = [title, url]
         let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
 
         if let popoverController = activityVC.popoverPresentationController {
